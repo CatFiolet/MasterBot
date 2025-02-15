@@ -480,6 +480,6 @@ def savedata():
 	while True:
 		with open(path + '\\data.json', 'w') as file:
 			json.dump([users.copy(),partners.copy(),amd.copy(),ptd.copy(),usd.copy(),allevents],file)
-		sleep(20)
+		sleep(600)
 Thread(target=savedata).start()
 bot.polling(none_stop=True)
