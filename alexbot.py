@@ -43,7 +43,7 @@ def start(msg : Message):
 	if msg.text == '/start':
 		if user == admin:
 			bot.send_message(msg.from_user.id,'Главное меню',reply_markup=adminkb)
-		if user in users:
+		elif user in users:
 			bot.send_message(msg.from_user.id,'Главное меню',reply_markup=startkb)
 		else:
 			bot.send_message(user, 'Что может этот бот: Приветствую тебя на платформе здоровья',reply_markup=ikm().add(ikb('Запустить бота',callback_data='reg')))
