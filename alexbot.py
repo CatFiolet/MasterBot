@@ -1,5 +1,6 @@
 import telebot
 from telebot.types import InlineKeyboardButton as ikb
+from telebot.types import KeyboardButton as rkb
 from telebot.types import InlineKeyboardMarkup as ikm
 from telebot.types import *
 import openpyxl
@@ -9,10 +10,10 @@ import os
 from threading import Thread
 path = os.path.dirname(os.path.abspath(__file__))
 src = path + '\\config.xlsx'
-
 tb = openpyxl.load_workbook(src)
 hobbys = [i.value for i in tb['Лист1']['A']]
 regions = [i.value for i in tb['Лист2']['A']]
+print(hobbys,regions)
 regkb = ReplyKeyboardMarkup()
 for i in regions:
 	regkb.add(KeyboardButton(i))
@@ -20,6 +21,9 @@ token = '6809346822:AAGv2fT4IqwwwSpWk-T2FnuELd1MAwdHZCc'
 prices = [LabeledPrice(label='Пропуск на мероприятие', amount=50000)]
 with open(path + '\\data.json') as file:
 	js = json.load(file)
+src = path + '\\settings.xlsx'
+tb = openpyxl.load_workbook(src)
+answuser = 0
 admin = 5063776357
 partners = js[1].copy()
 users = js[0].copy()
@@ -27,30 +31,21 @@ amd = js[2].copy()
 ptd = js[3].copy()
 usd = js[4].copy()
 allevents = js[5].copy()
-print(ptd)
-print(allevents)
-startkb = ikm().add(ikb('Мой профиль', callback_data='profile')).add(ikb('Общение', callback_data='chat')).add(ikb('Мероприятия', callback_data='events')).add(ikb('Помощь', callback_data='help'))
+startkb = ReplyKeyboardMarkup().add(ikb('Мой профиль')).add(rkb('Общение')).add(rkb('Мероприятия')).add(rkb('Помощь'))
 adminkb = ikm().add(ikb('Мои мероприятия', callback_data='myevents')).add(ikb('Загрузить списки', callback_data='loadlists')).add(ikb('Отчет по пользователям', callback_data='userlog')).add(ikb('Отчет по мероприятиям', callback_data='eventlog'))
 bot = telebot.TeleBot(token)
-@bot.message_handler(commands=['start'])
+@bot.message_handler(content_types=['text'])
 def start(msg : Message):
 	user = msg.from_user.id
-	if user == admin:
-		bot.send_message(msg.from_user.id,'Главное меню',reply_markup=adminkb)
-	if user in users:
-		bot.send_message(msg.from_user.id,'Главное меню',reply_markup=startkb)
-	else:
-		bot.send_message(user, 'Что может этот бот: Приветствую тебя на платформе здоровья',reply_markup=ikm().add(ikb('Запустить бота',callback_data='reg')))
-@bot.callback_query_handler(func=lambda call:True)
-def callback(call : CallbackQuery):
-	user = call.from_user.id
-	if call.data == 'reg' and not user in users:
-		usd[str(user)] = {'hobbys' : {}}
-		for i in hobbys:
-			usd[str(user)]['hobbys'][i] = False
-		bot.register_next_step_handler(bot.edit_message_text('Введите ваше имя:', call.message.chat.id, call.message.message_id), regname)
-	elif call.data == 'profile':
-		profile = usd[str(call.from_user.id)]
+	if msg.text == '/start':
+		if user == admin:
+			bot.send_message(msg.from_user.id,'Главное меню',reply_markup=adminkb)
+		if user in users:
+			bot.send_message(msg.from_user.id,'Главное меню',reply_markup=startkb)
+		else:
+			bot.send_message(user, 'Что может этот бот: Приветствую тебя на платформе здоровья',reply_markup=ikm().add(ikb('Запустить бота',callback_data='reg')))
+	elif msg.text == 'Мой профиль':
+		profile = usd[str(user)]
 		string = 'Имя: ' + profile['name']
 		if profile['surname'] != 'Пропустить':
 			string += '\nФамилия: ' + profile['surname']
@@ -63,25 +58,40 @@ def callback(call : CallbackQuery):
 			if profile['hobbys'][i] == True:
 				prhobbys.append(i)
 		string += '\nУвлечения: ' + ', '.join(prhobbys)
+		kb = ikm()
+		if not user in partners:
+			kb.add(ikb('Подать заявку на Партнера', callback_data='newpart'))
 		if profile['photo'] != 'Пропустить':
-			bot.send_photo(user, profile['photo'], string,reply_markup=ikm().add(ikb('Подать заявку на Партнера', callback_data='newpart')))
+			bot.send_photo(user, profile['photo'], string,reply_markup=kb)
 		else:
-			bot.send_message(user, string,reply_markup=ikm().add(ikb('Подать заявку на Партнера', callback_data='newpart')))
-	elif call.data == 'newpart':
-		bot.register_next_step_handler(bot.send_message(user, 'Напишите заявку на партнера. В ней укажите каким родом услуг вы занимаетесь, а так же причину по которой вы хотели бы стать партнером. Также к сообщению прикрепите свое фото.', reply_markup=ReplyKeyboardMarkup().add(KeyboardButton('Отменить'))), newpart)
-	elif call.data == 'chat':
+			bot.send_message(user, string,reply_markup=kb)
+	elif msg.text == 'Общение':
 		bot.send_message(user, 'Наши чаты', reply_markup=ikm().add(ikb('Чат', url='https://yandex.ru')).add(ikb('Группа мероприятий', url='https://yandex.ruц')))
-	elif call.data == 'events':
+	elif msg.text == 'Мероприятия':
 		kb = ikm()
 		if user in partners:
 			kb.add(ikb('Мои мероприятия', callback_data='myevents'))
 		kb.add(ikb('Мероприятия Мастера', callback_data='mastevents'))
 		kb.add(ikb('Мероприятия Партнеров', callback_data='partevents'))
 		bot.send_message(user, 'Меню мероприятий:', reply_markup=kb)
+	elif msg.text == 'Помощь':
+		bot.send_message(user,'Какой-то текст про работу с ботом и FAQ', reply_markup=ikm().add(ikb('Связаться с нами',callback_data='question')))
+@bot.callback_query_handler(func=lambda call:True)
+def callback(call : CallbackQuery):
+	user = call.from_user.id
+	if call.data == 'reg' and not user in users:
+		usd[str(user)] = {'hobbys' : {}}
+		for i in hobbys:
+			usd[str(user)]['hobbys'][i] = False
+		bot.register_next_step_handler(bot.edit_message_text('Введите ваше имя:', call.message.chat.id, call.message.message_id), regname)
+	elif call.data == 'newpart':
+		partners.append(user)
+		ptd[str(user)] = []
+		bot.register_next_step_handler(bot.send_message(user, 'Напишите заявку на партнера. В ней укажите каким родом услуг вы занимаетесь, а так же причину по которой вы хотели бы стать партнером. Также к сообщению прикрепите свое фото.', reply_markup=ReplyKeyboardMarkup().add(KeyboardButton('Отменить'))), newpart)
 	elif call.data == 'myevents':
 		if user == admin and amd == []:
 			bot.send_message(user,'Ваш список мероприятий пуст!', reply_markup=ikm().add(ikb('Добавить мероприятие', callback_data='newevent')))
-		elif ptd[str(user)] == []:
+		elif user != admin and ptd[str(user)] == []:
 			bot.send_message(user,'Ваш список мероприятий пуст!', reply_markup=ikm().add(ikb('Добавить мероприятие', callback_data='newevent')))
 		else:
 			if user == admin:
@@ -89,7 +99,7 @@ def callback(call : CallbackQuery):
 			else:
 				event = ptd[str(call.from_user.id)][0]
 			kb = ikm().add(ikb('-->', callback_data=f'myevent{len(ptd[str(call.from_user.id)] if user != admin else amd) * -1 + 1}')).add(ikb(f'1/{len(ptd[str(call.from_user.id)] if user != admin else amd)}',callback_data='[]')).add(ikb('Добавить мероприятие',callback_data='newevent'))
-			string = event['name'] + '\nДата начала: ' + event['date'] + '\nВремя начала: ' + event['time'] + '\nИнтересы: ' + ', '.join(event['hobbys'])
+			string = event['name'] + '\nДата начала: ' + event['date'] + '\nВремя начала: ' + event['time']
 			prhobbys = []
 			for i in event['hobbys']:
 				if event['hobbys'][i] == True:
@@ -114,7 +124,7 @@ def callback(call : CallbackQuery):
 			else:
 				event = ptd[str(call.from_user.id)][data]
 			kb = ikm().row(ikb('<--', callback_data=f'myevent{data - 1}'),ikb('-->', callback_data=f'myevent{data + 1}')).add(ikb(f'{len(ptd[str(call.from_user.id)] if user != admin else amd) + data + 1}/{len(ptd[str(call.from_user.id)] if user != admin else amd)}',callback_data='[]')).add(ikb('Добавить мероприятие',callback_data='newevent'))
-			string = event['name'] + '\nДата начала: ' + event['date'] + '\nВремя начала: ' + event['time'] + '\nИнтересы: ' + ', '.join(event['hobbys'])
+			string = event['name'] + '\nДата начала: ' + event['date'] + '\nВремя начала: ' + event['time']
 			prhobbys = []
 			for i in event['hobbys']:
 				if event['hobbys'][i] == True:
@@ -140,20 +150,24 @@ def callback(call : CallbackQuery):
 				amd[0]['hobbys'][i] = False
 			bot.register_next_step_handler(bot.send_message(user,'Введите название мероприятия:'), evname)
 	elif call.data == 'partevents':
-		event = ptd[str(allevents[0][0])][allevents[0][1]]
-		kb = ikm().add(ikb('-->', callback_data=f'pevent{len(allevents) * -1 + 1}')).add(ikb(f'1/{len(allevents)}',callback_data='[]')).add(ikb('Учавствовать',callback_data=f'inv{len(allevents) * -1}'))
-		string = event['name'] + '\nДата начала: ' + event['date'] + '\nВремя начала: ' + event['time'] + '\nИнтересы: ' + ', '.join(event['hobbys'])
-		prhobbys = []
-		for i in event['hobbys']:
-			if event['hobbys'][i] == True:
-				prhobbys.append(i)
-		string += '\nУвлечения: ' + ', '.join(prhobbys)
-		if event['desc'] != 'Пропустить':
-			string += event['desc']
-		if event['photo'] != 'Пропустить':
-			bot.send_photo(user, event['photo'], string,reply_markup=kb)
+		if len(allevents) != 0:
+			event = ptd[str(allevents[0][0])][allevents[0][1]]
+			kb = ikm().add(ikb('-->', callback_data=f'pevent{len(allevents) * -1 + 1}')).add(ikb(f'1/{len(allevents)}',callback_data='[]')).add(ikb('Учавствовать',callback_data=f'inv{len(allevents) * -1}'))
+			string = event['name'] + '\nДата начала: ' + event['date'] + '\nВремя начала: ' + event['time']
+			prhobbys = []
+			for i in event['hobbys']:
+				if event['hobbys'][i] == True:
+					prhobbys.append(i)
+			string += '\nУвлечения: ' + ', '.join(prhobbys)
+			if event['desc'] != 'Пропустить':
+				string += '\n'
+				string += event['desc']
+			if event['photo'] != 'Пропустить':
+				bot.send_photo(user, event['photo'], string,reply_markup=kb)
+			else:
+				bot.send_message(user, string,reply_markup=kb)
 		else:
-			bot.send_message(user, string,reply_markup=kb)
+			bot.send_message(user,'Пока что никто не создал ни одного мероприятия!')
 	elif call.data.startswith('pevent'):
 		data = int(call.data[6:])
 		if len(allevents) < data * -1 or data == 0:
@@ -161,7 +175,7 @@ def callback(call : CallbackQuery):
 		else:
 			event = ptd[str(allevents[data][0])][allevents[data][1]]
 			kb = ikm().row(ikb('<--', callback_data=f'pevent{data - 1}'),ikb('-->', callback_data=f'pevent{data + 1}')).add(ikb(f'{len(allevents) + data + 1}/{len(allevents)}',callback_data='[]')).add(ikb('Учавствовать',callback_data=f'inv{data}'))
-			string = event['name'] + '\nДата начала: ' + event['date'] + '\nВремя начала: ' + event['time'] + '\nИнтересы: ' + ', '.join(event['hobbys'])
+			string = event['name'] + '\nДата начала: ' + event['date'] + '\nВремя начала: ' + event['time']
 			prhobbys = []
 			for i in event['hobbys']:
 				if event['hobbys'][i] == True:
@@ -176,28 +190,32 @@ def callback(call : CallbackQuery):
 			else:
 				bot.send_message(user,string,reply_markup=kb)
 	elif call.data == 'mastevents':
-		event = amd[0]
-		kb = ikm().add(ikb('-->', callback_data=f'mevent{len(amd) * -1 + 1}')).add(ikb(f'1/{len(amd)}',callback_data='[]')).add(ikb('Учавствовать',callback_data=f'inv{len(amd) * -1}'))
-		string = event['name'] + '\nДата начала: ' + event['date'] + '\nВремя начала: ' + event['time'] + '\nИнтересы: ' + ', '.join(event['hobbys'])
-		prhobbys = []
-		for i in event['hobbys']:
-			if event['hobbys'][i] == True:
-				prhobbys.append(i)
-		string += '\nУвлечения: ' + ', '.join(prhobbys)
-		if event['desc'] != 'Пропустить':
-			string += event['desc']
-		if event['photo'] != 'Пропустить':
-			bot.send_photo(user, event['photo'], string,reply_markup=kb)
+		if len(amd) != 0:
+			event = amd[0]
+			kb = ikm().add(ikb('-->', callback_data=f'mevent{len(amd) * -1 + 1}')).add(ikb(f'1/{len(amd)}',callback_data='[]')).add(ikb('Учавствовать',callback_data=f'minv{len(amd) * -1}'))
+			string = event['name'] + '\nДата начала: ' + event['date'] + '\nВремя начала: ' + event['time']
+			prhobbys = []
+			for i in event['hobbys']:
+				if event['hobbys'][i] == True:
+					prhobbys.append(i)
+			string += '\nУвлечения: ' + ', '.join(prhobbys)
+			if event['desc'] != 'Пропустить':
+				string += '\n'
+				string += event['desc']
+			if event['photo'] != 'Пропустить':
+				bot.send_photo(user, event['photo'], string,reply_markup=kb)
+			else:
+				bot.send_message(user, string,reply_markup=kb)
 		else:
-			bot.send_message(user, string,reply_markup=kb)
+			bot.send_message(user,'Пока что Мастер не создал ни одного мероприятия!')
 	elif call.data.startswith('mevent'):
 		data = int(call.data[6:])
 		if len(amd) < data * -1 or data == 0:
 			bot.send_message(user, 'Это конец списка!')
 		else:
 			event = amd[data]
-			kb = ikm().row(ikb('<--', callback_data=f'mevent{data - 1}'),ikb('-->', callback_data=f'mevent{data + 1}')).add(ikb(f'{len(amd) + data + 1}/{len(amd)}',callback_data='[]')).add(ikb('Учавствовать',callback_data=f'inv{data}'))
-			string = event['name'] + '\nДата начала: ' + event['date'] + '\nВремя начала: ' + event['time'] + '\nИнтересы: ' + ', '.join(event['hobbys'])
+			kb = ikm().row(ikb('<--', callback_data=f'mevent{data - 1}'),ikb('-->', callback_data=f'mevent{data + 1}')).add(ikb(f'{len(amd) + data + 1}/{len(amd)}',callback_data='[]')).add(ikb('Учавствовать',callback_data=f'minv{data}'))
+			string = event['name'] + '\nДата начала: ' + event['date'] + '\nВремя начала: ' + event['time']
 			prhobbys = []
 			for i in event['hobbys']:
 				if event['hobbys'][i] == True:
@@ -214,23 +232,27 @@ def callback(call : CallbackQuery):
 	elif call.data == 'loadlists':
 		bot.register_next_step_handler(bot.send_message(user,'Отправьте таблицу с данными:'), loadlist)
 	elif call.data.startswith('inv'):
-		bot.send_invoice(call.from_user.id, 'Пропуск на мероприятие', 'Данный пропуск позволяет вам пройти на "' + ptd[allevents[int(call.data[3:])][0]][allevents[int(call.data[3:])][1]]['name'] + '".', f'p{call.data[3:]}', '1744374395:TEST:8a27ed0a11f76bc31d18','rub', prices, start_parameter='invite')
+		bot.send_invoice(call.from_user.id, 'Пропуск на мероприятие', 'Данный пропуск позволяет вам пройти на "' + ptd[allevents[int(call.data[3:])][0]][allevents[int(call.data[3:])][1]]['name'] + '".', f'p{call.data[3:]}', '1744374395:TEST:8a27ed0a11f76bc31d18','rub', [LabeledPrice(label='Пропуск на мероеприятие', amount=ptd[allevents[int(call.data[3:])][0]][allevents[int(call.data[3:])][1]]['price'])], start_parameter='invite')
+	elif call.data.startswith('minv'):
+		bot.send_invoice(call.from_user.id, 'Пропуск на мероприятие', 'Данный пропуск позволяет вам пройти на "' + amd[int(call.data[4:])]['name'] + '".', f'm{call.data[4:]}', '1744374395:TEST:8a27ed0a11f76bc31d18','rub', [LabeledPrice(label='Пропуск на мероеприятие', amount=amd[int(call.data[4:])]['price'])], start_parameter='invite')
 	elif call.data == 'userlog':
 		wb = openpyxl.Workbook()
 		ws = wb.active
 		for i in usd:
 			try:
+				print([usd[i]['name'],usd[i]['surname'] if usd[i]['surname'] != 'Пропустить' else '',usd[i]['sex'] if usd[i]['sex'] != 'Пропустить' else '',usd[i]['age'],usd[i]['region'],', '.join(usd[i]['hobbys']),usd[i]['photo'] if usd[i]['photo'] != 'Пропустить' else ''])
 				ws.append([usd[i]['name'],usd[i]['surname'] if usd[i]['surname'] != 'Пропустить' else '',usd[i]['sex'] if usd[i]['sex'] != 'Пропустить' else '',usd[i]['age'],usd[i]['region'],', '.join(usd[i]['hobbys']),usd[i]['photo'] if usd[i]['photo'] != 'Пропустить' else ''])
 			except:
 				pass
 		wb.save(path + '\\members_log.xlsx')
-		bot.send_document(call.from_user.id, InputFile(path + 'members_log.xlsx'))
+		bot.send_document(call.from_user.id, InputFile(path + '\\members_log.xlsx'))
 	elif call.data == 'eventlog':
 		wb = openpyxl.Workbook()
 		ws = wb.active
 		for i in allevents:
 			try:
 				event = ptd[i[0]][i[1]]
+				print([event['name'], event['date'], event['time'], ', '.join(event['hobbys']), event['desc'] if event['desc'] != 'Пропустить' else '', event['photo'] if event['photo'] != 'Пропустить' else ''])
 				ws.append([event['name'], event['date'], event['time'], ', '.join(event['hobbys']), event['desc'] if event['desc'] != 'Пропустить' else '', event['photo'] if event['photo'] != 'Пропустить' else ''])
 			except:
 				pass
@@ -239,19 +261,42 @@ def callback(call : CallbackQuery):
 	elif call.data.startswith('npart'):
 		part = int(call.data[5:])
 		partners.append(part)
-		ptd[str(user)] = []
+		ptd[str(part)] = []
 		bot.send_message(part, 'Вашу заявку на партнера одобрили!')
-	elif call.data.startswith('сpart'):
+	elif call.data.startswith('cpart'):
 		part = int(call.data[5:])
 		bot.send_message(part, 'Вашу заявку на партнера отклонили!')
+	elif call.data == 'help':
+		bot.send_message(user,'Какой-то текст про работу с ботом и FAQ', reply_markup=ikm().add(ikb('Связаться с нами',callback_data='question')))
+	elif call.data == 'question':
+		bot.register_next_step_handler(bot.send_message(user,'Напишите свой вопрос и мы постараемся вам на него ответить!'), question)
+	elif call.data.startswith('answer'):
+		global answuser
+		answuser = int(call.data[6:])
+		bot.register_next_step_handler(bot.send_message(admin,'Введите ответ на вопрос пользователя:'), answer)
 @bot.pre_checkout_query_handler(func=lambda query: True)
-def checkout(pre_checkout_query):
+def checkout(pre_checkout_query : PreCheckoutQuery):
     bot.answer_pre_checkout_query(pre_checkout_query.id, ok=True,error_message="Что-то пошло не так! Повторите попытку")
 @bot.message_handler(content_types=['successful_payment'])
 def got_payment(message : Invoice):
 	bot.send_message(message.from_user.id, 'Проход на мероприятие успешно приобретён!')
 	data = int(message.successful_payment.invoice_payload[1:])
-	ptd[allevents[data][0]][allevents[data][1]]['members'].append(message.from_user.id)
+	if message.successful_payment.invoice_payload[0] == 'p':
+		ptd[allevents[data][0]][allevents[data][1]]['members'].append(message.from_user.id)
+	else:
+		amd[data]['members'].append(message.from_user.id)
+def question(msg : Message):
+	if msg.content_type == 'text':
+		bot.send_message(admin, f'Пользователь хочет задать вам вопрос: {msg.text}', reply_markup=ikm().add(ikb('Ответить',callback_data=f'answer{msg.from_user.id}')))
+		bot.send_message(msg.from_user.id, 'Ваша заявка отправленна модерации!')
+	else:
+		bot.send_message(msg.from_user.id, 'Пожалуйста отправьте текст!')
+def answer(msg : Message):
+	if msg.content_type == 'text':
+		bot.send_message(answuser, f'Модерация ответила на ваш вопрос: {msg.text}')
+		bot.send_message(answuser, 'Ответ отправлен пользователю')
+	else:
+		bot.send_message(msg.from_user.id, 'Пожалуйста отправьте текст!')
 def newpart(msg : Message):
 	if msg.content_type == 'text' and msg.text == 'Отменить':
 		bot.send_message(msg.from_user.id, 'Подача заявки отменена.')
@@ -274,6 +319,9 @@ def loadlist(msg : Message):
 		regkb = ReplyKeyboardMarkup()
 		for i in regions:
 			regkb.add(KeyboardButton(i))
+		bot.send_message(msg.from_user.id,'Успешно!')
+	else:
+		bot.send_message(msg.from_user.id,'Это не похоже на таблицу!')
 def regname(msg : Message):
 	if msg.content_type != 'text':
 		bot.register_next_step_handler(bot.send_message(msg.from_user.id, 'Это не похоже на имя! Введите ваше имя:'), regname)
@@ -352,12 +400,14 @@ def regphoto(msg : Message):
 	if msg.content_type == 'text' and msg.text == 'Пропустить':
 		usd[str(msg.from_user.id)]['photo'] = 'Пропустить'
 		users.append(msg.from_user.id)
-		bot.send_message(msg.from_user.id,'Регистрация прошла успешно',reply_markup=startkb)
+		bot.send_message(msg.from_user.id,'Регистрация прошла успешно',reply_markup=ReplyKeyboardRemove())
+		bot.send_message(msg.from_user.id,'Главное меню',reply_markup=startkb)
 	elif msg.content_type == 'photo':
 		usd[str(msg.from_user.id)]['photo'] = msg.photo[len(msg.photo) - 1].file_id
 		users.append(msg.from_user.id)
 		print(usd[str(msg.from_user.id)])
-		bot.send_message(msg.from_user.id,'Регистрация прошла успешно',reply_markup=startkb)
+		bot.send_message(msg.from_user.id,'Регистрация прошла успешно',reply_markup=ReplyKeyboardRemove())
+		bot.send_message(msg.from_user.id,'Главное меню',reply_markup=startkb)
 	else:
 		bot.register_next_step_handler(bot.send_message(msg.from_user.id, 'Это не похоже на фотографию. Загрузите ваше фото:', reply_markup=ReplyKeyboardMarkup().add(KeyboardButton('Пропустить'))), regphoto)
 def evname(msg : Message):
@@ -405,7 +455,7 @@ def evhobby(msg : Message):
 				if (ptd[str(msg.from_user.id)][0]['hobbys'][i] if msg.from_user.id != admin else amd[0]['hobbys'][i]) == True:
 					a += 1
 			if a > 0:
-				bot.register_next_step_handler(bot.send_message(msg.from_user.id,'Введите адрес проведения мероприятия:'), evadress)
+				bot.register_next_step_handler(bot.send_message(msg.from_user.id,'Введите адрес проведения мероприятия:',reply_markup=ReplyKeyboardMarkup()), evadress)
 			else:
 				bot.register_next_step_handler(bot.send_message(msg.from_user.id, 'Выберите хотя бы 1 пункт'), evhobby)
 		elif hobby in keys:
@@ -450,7 +500,7 @@ def evphoto(msg : Message):
 			ptd[str(msg.from_user.id)][0]['photo'] = 'Пропустить'
 		else:
 			amd[0]['photo'] = 'Пропустить'
-		bot.register_next_step_handler(bot.send_message(msg.from_user.id,'Сохранить мероприятие?',reply_markup=ReplyKeyboardMarkup().add(KeyboardButton('Да')).add(KeyboardButton('Нет'))), evconf)
+		bot.register_next_step_handler(bot.send_message(msg.from_user.id,'Введите стоимость входа на мероприятие в рублях:',reply_markup=ReplyKeyboardRemove()), evprice)
 	elif msg.content_type != 'photo':
 		bot.register_next_step_handler(bot.send_message(msg.from_user.id,'Это не похоже на фотографию! Прикрепите фоторграфию к мероприятию:'), evphoto)
 	else:
@@ -458,7 +508,16 @@ def evphoto(msg : Message):
 			ptd[str(msg.from_user.id)][0]['photo'] = msg.photo[len(msg.photo) - 1].file_id
 		else:
 			amd[0]['photo'] = msg.photo[len(msg.photo) - 1].file_id
+		bot.register_next_step_handler(bot.send_message(msg.from_user.id,'Введите стоимость входа на мероприятие в рублях:',reply_markup=ReplyKeyboardRemove()), evprice)
+def evprice(msg : Message):
+	if msg.content_type == 'text' and msg.text.isdigit():
+		if msg.from_user.id != admin:
+			ptd[str(msg.from_user.id)][0]['price'] = int(msg.text) * 100
+		else:
+			amd[0]['price'] = int(msg.text) * 100
 		bot.register_next_step_handler(bot.send_message(msg.from_user.id,'Сохранить мероприятие?',reply_markup=ReplyKeyboardMarkup().add(KeyboardButton('Да')).add(KeyboardButton('Нет'))), evconf)
+	else:
+		bot.register_next_step_handler(bot.send_message(msg.from_user.id,'Цена должна быть числом! Введите стоимость входа на мероприятие в рублях:'), evprice)
 def evconf(msg : Message):
 	if msg.content_type != 'text':
 		bot.register_next_step_handler(bot.send_message(msg.from_user.id,'Выберите ответ используя кнопки на клавиатуре! Сохранить мероприятие?',reply_markup=ReplyKeyboardMarkup().add(KeyboardButton('Да').add(KeyboardButton('Нет')))), evconf)
@@ -468,18 +527,42 @@ def evconf(msg : Message):
 			allevents.insert(0, [str(msg.from_user.id), len(ptd[str(msg.from_user.id)]) * -1])
 		else:
 			amd[0]['ready'] = True
+		bot.send_message(msg.from_user.id, 'Успешно!', reply_markup=ReplyKeyboardRemove())
+		if msg.from_user.id == admin and amd == []:
+			bot.send_message(msg.from_user.id,'Ваш список мероприятий пуст!', reply_markup=ikm().add(ikb('Добавить мероприятие', callback_data='newevent')))
+		elif msg.from_user.id != admin and ptd[str(msg.from_user.id)] == []:
+			bot.send_message(msg.from_user.id,'Ваш список мероприятий пуст!', reply_markup=ikm().add(ikb('Добавить мероприятие', callback_data='newevent')))
+		else:
+			if msg.from_user.id == admin:
+				event = amd[0]
+			else:
+				event = ptd[str(msg.from_user.id)][0]
+			kb = ikm().add(ikb('-->', callback_data=f'myevent{len(ptd[str(msg.from_user.id)] if msg.from_user.id != admin else amd) * -1 + 1}')).add(ikb(f'1/{len(ptd[str(msg.from_user.id)] if msg.from_user.id != admin else amd)}',callback_data='[]')).add(ikb('Добавить мероприятие',callback_data='newevent'))
+			string = event['name'] + '\nДата начала: ' + event['date'] + '\nВремя начала: ' + event['time']
+			prhobbys = []
+			for i in event['hobbys']:
+				if event['hobbys'][i] == True:
+					prhobbys.append(i)
+			string += '\nУвлечения: ' + ', '.join(prhobbys)
+			if event['desc'] != 'Пропустить':
+				string += '\n'
+				string += event['desc']
+			if event['photo'] != 'Пропустить':
+				bot.send_photo(msg.from_user.id, event['photo'], string,reply_markup=kb)
+			else:
+				bot.send_message(msg.from_user.id, string,reply_markup=kb)
 	elif msg.text.lower() == 'нет':
 		if msg.from_user.id != admin:
 			ptd[str(msg.from_user.id)].pop(0)
 		else:
 			amd.pop(0)
-		bot.send_message(msg.from_user.id, 'Успешно!')
+		bot.send_message(msg.from_user.id, 'Успешно!', reply_markup=ReplyKeyboardRemove())
 	else:
 		bot.register_next_step_handler(bot.send_message(msg.from_user.id,'Выберите ответ используя кнопки на клавиатуре! Сохранить мероприятие?',reply_markup=ReplyKeyboardMarkup().add(KeyboardButton('Да').add(KeyboardButton('Нет')))), evconf)
 def savedata():
 	while True:
+		sleep(10)
 		with open(path + '\\data.json', 'w') as file:
 			json.dump([users.copy(),partners.copy(),amd.copy(),ptd.copy(),usd.copy(),allevents],file)
-		sleep(600)
 Thread(target=savedata).start()
 bot.polling(none_stop=True)
