@@ -9,14 +9,14 @@ import json
 import os
 from threading import Thread
 path = os.path.dirname(os.path.abspath(__file__))
-src = path + '\\config.xlsx'
+src = path + '/config.xlsx'
 tb = openpyxl.load_workbook(src)
 hobbys = [i.value for i in tb['Лист1']['A']]
 regions = [i.value for i in tb['Лист2']['A']]
 regkb = ReplyKeyboardMarkup()
 for i in regions:
 	regkb.add(KeyboardButton(i))
-src = path + '\\settings.xlsx'
+src = path + '/settings.xlsx'
 tb = openpyxl.load_workbook(src)
 token = tb['Лист1']['A1'].value
 provtoken = tb['Лист1']['A2'].value
@@ -25,7 +25,7 @@ faqtext = tb['Лист1']['A4'].value
 mainchat = tb['Лист1']['A5'].value
 evchat = tb['Лист1']['A6'].value
 prices = [LabeledPrice(label='Пропуск на мероприятие', amount=50000)]
-with open(path + '\\data.json') as file:
+with open(path + '/data.json') as file:
 	js = json.load(file)
 answuser = 0
 partners = js[1].copy()
@@ -247,8 +247,8 @@ def callback(call : CallbackQuery):
 				ws.append([usd[i]['name'],usd[i]['surname'] if usd[i]['surname'] != 'Пропустить' else '',usd[i]['sex'] if usd[i]['sex'] != 'Пропустить' else '',usd[i]['age'],usd[i]['region'],', '.join(usd[i]['hobbys']),usd[i]['photo'] if usd[i]['photo'] != 'Пропустить' else ''])
 			except:
 				pass
-		wb.save(path + '\\members_log.xlsx')
-		bot.send_document(call.from_user.id, InputFile(path + '\\members_log.xlsx'))
+		wb.save(path + '/members_log.xlsx')
+		bot.send_document(call.from_user.id, InputFile(path + '/members_log.xlsx'))
 	elif call.data == 'eventlog':
 		wb = openpyxl.Workbook()
 		ws = wb.active
@@ -259,8 +259,8 @@ def callback(call : CallbackQuery):
 				ws.append([event['name'], event['date'], event['time'], ', '.join(event['hobbys']), event['desc'] if event['desc'] != 'Пропустить' else '', event['photo'] if event['photo'] != 'Пропустить' else ''])
 			except:
 				pass
-		wb.save(path + '\\events_log.xlsx')
-		bot.send_document(call.from_user.id, InputFile(path + '\\events_log.xlsx'))
+		wb.save(path + '/events_log.xlsx')
+		bot.send_document(call.from_user.id, InputFile(path + '/events_log.xlsx'))
 	elif call.data.startswith('npart'):
 		part = int(call.data[5:])
 		partners.append(part)
@@ -311,7 +311,7 @@ def loadlist(msg : Message):
 	if msg.content_type == 'document':
 		file_info = bot.get_file(msg.document.file_id)
 		downloaded_file = bot.download_file(file_info.file_path)
-		src = path + '\\config.xlsx'
+		src = path + '/config.xlsx'
 		with open(src, 'wb') as new_file:	
 			new_file.write(downloaded_file)
 		tb = openpyxl.load_workbook(src)
@@ -563,7 +563,7 @@ def evconf(msg : Message):
 def savedata():
 	while True:
 		sleep(10)
-		with open(path + '\\data.json', 'w') as file:
+		with open(path + '/data.json', 'w') as file:
 			json.dump([users.copy(),partners.copy(),amd.copy(),ptd.copy(),usd.copy(),allevents],file)
 Thread(target=savedata).start()
 bot.polling(none_stop=True)
