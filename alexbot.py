@@ -18,12 +18,12 @@ for i in regions:
 	regkb.add(KeyboardButton(i))
 src = path + '/settings.xlsx'
 tb = openpyxl.load_workbook(src)
-token = tb['Лист1']['A1'].value
-provtoken = tb['Лист1']['A2'].value
-admin = int(tb['Лист1']['A3'].value)
-faqtext = tb['Лист1']['A4'].value
-mainchat = tb['Лист1']['A5'].value
-evchat = tb['Лист1']['A6'].value
+token = tb['Лист1']['B1'].value
+provtoken = tb['Лист1']['B2'].value
+admin = int(tb['Лист1']['B3'].value)
+faqtext = tb['Лист1']['B4'].value
+mainchat = tb['Лист1']['B5'].value
+evchat = tb['Лист1']['B6'].value
 prices = [LabeledPrice(label='Пропуск на мероприятие', amount=50000)]
 with open(path + '/data.json') as file:
 	js = json.load(file)
